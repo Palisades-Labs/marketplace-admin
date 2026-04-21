@@ -111,6 +111,7 @@ If none of A/B/C produce a repo, tell the user: "I couldn't detect a client repo
 CLIENT_REPO="<org>/<repo>"              # from above
 REPO_NAME="${CLIENT_REPO##*/}"
 MARKETPLACE_NAME="${REPO_NAME%-claude-harness}"
+MARKETPLACE_NAME="${MARKETPLACE_NAME%-harness}"
 ```
 
 Must match what `bootstrap.sh` / `bootstrap.ps1` / `/onboard-client` derive. If Context B surfaced a `marketplace.json` name that differs, the repo was onboarded before the Option C migration — flag it to the user and use the derived value anyway.
@@ -238,7 +239,7 @@ If you rotate the passphrase itself, re-run `/client-admin:generate-installer` a
   - `bootstrap.sh --decrypt <org>/<repo>`
   - `bootstrap.ps1 -Decrypt -Repo <org>/<repo>` (locally) OR `$env:DECRYPT_MODE='1'; $env:CLIENT_REPO='<org>/<repo>'; iwr|iex` (one-liner form; param() binding is skipped under iex so the script reads `$env:DECRYPT_MODE` and `$env:CLIENT_REPO` as fallbacks).
   When either bootstrap changes its invocation, update the template above.
-- Option C naming invariant lives in four places: this skill, `bootstrap.sh`, `bootstrap.ps1`, and `/onboard-client`. All four must derive marketplace names identically (`basename(repo)` with any trailing `-claude-harness` stripped).
+- Marketplace-naming invariant lives in four places: this skill, `bootstrap.sh`, `bootstrap.ps1`, and `/onboard-client`. All four must derive marketplace names identically: `basename(repo)` with any trailing `-claude-harness` stripped, then any trailing `-harness` stripped (handles both naming conventions).
 
 ## Dependencies
 

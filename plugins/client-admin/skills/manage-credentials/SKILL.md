@@ -215,4 +215,4 @@ If rotating the passphrase itself, re-run `/client-admin:generate-installer` aft
 
 - `age` — install via `brew install age` (Mac) or `winget install FiloSottile.age` (Windows)
 - `git`
-- `GITHUB_TOKEN` — must have write access to the client harness repo
+- `gh` — authenticated as a user with write access to the client harness repo (`gh auth status` succeeds)
