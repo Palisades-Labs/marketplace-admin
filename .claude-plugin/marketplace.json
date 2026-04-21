@@ -1,0 +1,13 @@
+{
+  "name": "palisades-admin",
+  "owner": { "name": "Palisades Labs" },
+  "plugins": [
+    {
+      "name": "client-admin",
+      "source": {
+        "source": "github",
+        "repo": "Palisades-Labs/plugin-client-admin"
+      }
+    }
+  ]
+}
