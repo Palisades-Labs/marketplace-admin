@@ -1,0 +1,8 @@
+{
+  "name": "client-admin",
+  "version": "0.1.0",
+  "description": "Palisades-Labs client-admin plugin — consultant/admin tools for managing client engagements (manage-credentials, generate-installer). NOT distributed to employees.",
+  "author": {
+    "name": "Palisades Labs"
+  }
+}

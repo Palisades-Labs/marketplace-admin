@@ -4,10 +4,7 @@
   "plugins": [
     {
       "name": "client-admin",
-      "source": {
-        "source": "github",
-        "repo": "Palisades-Labs/plugin-client-admin"
-      }
+      "source": "./plugins/client-admin"
     }
   ]
 }
