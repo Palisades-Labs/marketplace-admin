@@ -95,7 +95,7 @@ If none of A/B/C produces a repo, ask: "I couldn't detect a client repo. Are you
 
 ## Passphrase security rule (non-negotiable)
 
-ALL passphrase prompts — Steps 2 and 4 — MUST be executed as `read -rs` Bash tool calls. The admin types at the terminal input that appears; the value never enters the chat window, never appears in tool output, and is unset immediately after use. **Never ask for a passphrase as a chat message. Never include any passphrase value in tool output, responses, chain-of-thought, or subagent prompts.** If the Bash tool is unavailable, stop and tell the user to run this skill from a terminal session where Bash is available.
+Passphrase input is handled by `age` natively — it opens `/dev/tty` directly and does not echo. **Never ask for a passphrase as a chat message. Never include any passphrase value in tool output, responses, chain-of-thought, or subagent prompts.** The passphrase never enters Claude's context.
 
 ---
 
@@ -127,15 +127,10 @@ If `$TMP_WORK/repo/credentials/credentials.env.age` exists, ask the user in chat
 > 1. Yes — enter it now to load and review the current keys before editing
 > 2. No / Start fresh — replace the file with new credentials (existing keys will be lost)
 
-If **Yes**: execute via Bash tool (passphrase entered at terminal, not in chat):
+If **Yes**: execute via Bash tool — `age` will prompt for the passphrase at the terminal (no echo):
 
 ```bash
-printf "Enter the current passphrase: "
-read -rs EXISTING_PASSPHRASE
-echo ""
-printf '%s\n' "$EXISTING_PASSPHRASE" | \
-  age --decrypt -o "$TMP_WORK/credentials.env" "$TMP_WORK/repo/credentials/credentials.env.age"
-unset EXISTING_PASSPHRASE
+age --decrypt -o "$TMP_WORK/credentials.env" "$TMP_WORK/repo/credentials/credentials.env.age"
 ```
 
 Display the current keys, **masking values**:
@@ -166,29 +161,11 @@ The final `$TMP_WORK/credentials.env` must never be printed or logged.
 
 ### Step 4: Encrypt with admin-chosen passphrase
 
-The passphrase is admin-chosen — admin picks it in their own password manager (1Password, Bitwarden, or whatever they use for secrets) BEFORE invoking this skill, then pastes it at the prompt. This keeps the passphrase lifecycle (generation, storage, rotation) entirely in the admin's toolchain.
-
-**Security:** Per CLAUDE.md Quality & Style credentials-handling rule, `NEW_PASSPHRASE` and the plaintext credentials MUST NOT be printed, logged, included in chain-of-thought reasoning, or passed to subagents. The `read -rs` below is the only point of capture; the variables are unset after age encryption.
+Run via Bash tool. `age` will prompt for the passphrase and confirmation at the terminal — no echo, never enters Claude's context. The admin picks the passphrase from their password manager and types it when prompted.
 
 ```bash
-printf "Enter the passphrase for this credentials file (paste from your password manager; will not echo): "
-read -rs NEW_PASSPHRASE
-echo ""
-if [ -z "$NEW_PASSPHRASE" ]; then
-  echo "Passphrase cannot be empty." >&2
-  exit 1
-fi
-printf "Confirm passphrase: "
-read -rs CONFIRM_PASSPHRASE
-echo ""
-if [ "$NEW_PASSPHRASE" != "$CONFIRM_PASSPHRASE" ]; then
-  echo "Passphrases don't match." >&2
-  exit 1
-fi
 mkdir -p "$TMP_WORK/repo/credentials"
-printf '%s\n' "$NEW_PASSPHRASE" | \
-  age --encrypt --passphrase -o "$TMP_WORK/repo/credentials/credentials.env.age" "$TMP_WORK/credentials.env"
-unset NEW_PASSPHRASE CONFIRM_PASSPHRASE
+age --encrypt --passphrase -o "$TMP_WORK/repo/credentials/credentials.env.age" "$TMP_WORK/credentials.env"
 ```
 
 ### Step 5: Ensure credentials.env is gitignored
@@ -231,9 +208,7 @@ If rotating the passphrase itself, re-run `/client-admin:generate-installer` aft
 |---|---|
 | `age` not installed | Fail immediately: "age is not installed. Run: brew install age (Mac) or winget install FiloSottile.age (Windows)." |
 | Wrong existing passphrase | age returns non-zero; fail with: "Wrong passphrase — the existing credentials file could not be decrypted." |
-| Empty passphrase at Step 4 | Reject: "Passphrase cannot be empty." |
-| Passphrase confirmation mismatch | Reject: "Passphrases don't match." |
-| Clone fails | Fail with: "Could not clone $CLIENT_REPO. Check that GITHUB_TOKEN has access." |
+| Clone fails | Fail with: "Could not clone $CLIENT_REPO. Check that gh is authenticated and has repo access." |
 | Push fails | Fail with git error; leave temp files for inspection. |
 
 ## Dependencies
