@@ -134,11 +134,19 @@ If **No / Start fresh**: skip decryption, start with an empty credentials set. T
 
 If no existing file: start with an empty credentials set silently.
 
-### Step 3: Prompt for changes
+### Step 3: Collect keys via terminal commands
 
-Ask the user to add, update, or remove keys. Accept `KEY=value` pairs one at a time. When done, ask "Anything else? (Enter to finish)".
+Ask the user which API keys they want to add or update. For each key they name, output a copy-paste terminal command in triple backticks using `read -rsp` so the value is entered securely (not visible, not in chat, not in shell history):
 
-Write the final set to `$TMP_WORK/credentials.env` (never written to the cloned repo directory — always stays in the temp working dir).
+```bash
+read -rsp "TAVILY_API_KEY: " v && echo && echo "TAVILY_API_KEY=$v" >> "$TMP_WORK/credentials.env"
+```
+
+Replace `TAVILY_API_KEY` with the actual key name. Provide one command block per key. After the admin pastes and runs each command, ask "Any other keys? (say done when finished)".
+
+To remove a key (start-fresh path or explicit removal), omit it — don't append it to credentials.env.
+
+The final `$TMP_WORK/credentials.env` must never be printed or logged.
 
 ### Step 4: Encrypt with admin-chosen passphrase
 
