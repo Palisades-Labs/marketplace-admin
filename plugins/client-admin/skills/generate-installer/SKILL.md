@@ -82,7 +82,7 @@ if [ -f clients.json ]; then
 fi
 ```
 
-If a `slug` arg was given, match it against `.name`; else ask the user which client. Capture `.repo`.
+If a `slug` arg was given, match it against `.name`; else ask the user which client. Display client names titlecased (e.g., `test-client` → "Test Client"), not raw slugs. Capture `.repo`.
 
 **Context B — Client repo (admin with the harness checked out):** `.claude-plugin/marketplace.json` exists in `$PWD`.
 
@@ -101,7 +101,7 @@ Extract `<org>/<repo>` from the remote URL (strip `https://github.com/` prefix a
 jq -r '.extraKnownMarketplaces | to_entries[] | "\(.key)\t\(.value.source.repo)"' ~/.claude/settings.json
 ```
 
-If exactly one marketplace, use it. If multiple, ask the user which.
+For each entry, check whether `~/.claude/plugins/marketplaces/<name>/credentials/` exists — only client harness repos have this directory; marketplace catalogs do not. Exclude entries without it. Display qualifying entries by the `name` field from `.claude-plugin/marketplace.json` titlecased, not the repo slug. If exactly one qualifies, use it automatically. If multiple, ask the user which.
 
 If none of A/B/C produce a repo, tell the user: "I couldn't detect a client repo. Are you running this from your master repo, from inside a client's harness repo, or on a machine with the harness installed?"
 

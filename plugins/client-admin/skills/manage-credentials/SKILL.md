@@ -75,11 +75,11 @@ Employee refusal text:
 
 ## Resolve target client repo
 
-**Context A — Master repo (consultant):** `clients.json` exists in `$PWD`. List clients; ask which if no slug arg given.
+**Context A — Master repo (consultant):** `clients.json` exists in `$PWD`. List active clients by human name — titlecase the `name` field (e.g., `test-client` → "Test Client"). Ask which client if more than one.
 
 **Context B — Client repo (admin):** `.claude-plugin/marketplace.json` exists in `$PWD`. Extract `<org>/<repo>` from the git remote URL.
 
-**Context C — Installed harness (admin's own machine):** Read `~/.claude/settings.json` → `extraKnownMarketplaces`. Use the single entry or ask if multiple.
+**Context C — Installed harness (admin's own machine):** Read `~/.claude/settings.json` → `extraKnownMarketplaces`. For each entry, check whether `~/.claude/plugins/marketplaces/<name>/credentials/` exists — only client harness repos have this directory; marketplace catalogs do not. Exclude any entry without it. Display qualifying entries by the `name` field from their `.claude-plugin/marketplace.json` titlecased, not the repo slug. Use the single qualifying entry automatically; ask if multiple.
 
 If none of A/B/C produces a repo, ask: "I couldn't detect a client repo. Are you running this from your master repo, from inside a client's harness repo, or on a machine with the harness installed?"
 
