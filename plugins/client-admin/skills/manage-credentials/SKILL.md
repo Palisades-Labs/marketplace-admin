@@ -85,6 +85,12 @@ If none of A/B/C produces a repo, ask: "I couldn't detect a client repo. Are you
 
 ---
 
+## Passphrase security rule (non-negotiable)
+
+ALL passphrase prompts — Steps 2 and 4 — MUST be executed as `read -rs` Bash tool calls. The admin types at the terminal input that appears; the value never enters the chat window, never appears in tool output, and is unset immediately after use. **Never ask for a passphrase as a chat message. Never include any passphrase value in tool output, responses, chain-of-thought, or subagent prompts.** If the Bash tool is unavailable, stop and tell the user to run this skill from a terminal session where Bash is available.
+
+---
+
 ## Workflow
 
 ### Step 1: Clone client repo
@@ -99,11 +105,16 @@ git clone --depth 1 \
 
 ### Step 2: Load existing keys (if any)
 
-If `$TMP_WORK/repo/credentials/credentials.env.age` exists:
+If `$TMP_WORK/repo/credentials/credentials.env.age` exists, ask the user in chat:
+
+> I found an existing credentials file. Do you know the current passphrase?
+> 1. Yes — enter it now to load and review the current keys before editing
+> 2. No / Start fresh — replace the file with new credentials (existing keys will be lost)
+
+If **Yes**: execute via Bash tool (passphrase entered at terminal, not in chat):
 
 ```bash
-# Prompt for existing passphrase to decrypt
-printf "Existing credentials found. Enter the current passphrase to load and edit them: "
+printf "Enter the current passphrase: "
 read -rs EXISTING_PASSPHRASE
 echo ""
 printf '%s\n' "$EXISTING_PASSPHRASE" | \
@@ -111,7 +122,7 @@ printf '%s\n' "$EXISTING_PASSPHRASE" | \
 unset EXISTING_PASSPHRASE
 ```
 
-Display the current keys to the user, **masking values** (show key names, hide values):
+Display the current keys, **masking values**:
 
 ```
 Current keys:
@@ -119,7 +130,9 @@ Current keys:
   AVOMA_API_KEY  = ****
 ```
 
-If no existing file, start with an empty credentials set.
+If **No / Start fresh**: skip decryption, start with an empty credentials set. Tell the user: "Starting fresh — existing credentials will be replaced when you save."
+
+If no existing file: start with an empty credentials set silently.
 
 ### Step 3: Prompt for changes
 
