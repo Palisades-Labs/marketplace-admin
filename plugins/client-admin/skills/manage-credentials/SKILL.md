@@ -103,13 +103,21 @@ ALL passphrase prompts — Steps 2 and 4 — MUST be executed as `read -rs` Bash
 
 ### Step 1: Clone client repo
 
+Admin machines have `gh` authenticated — use `gh repo clone` so no token is embedded in a URL or echoed.
+
 ```bash
 TMP_WORK=$(mktemp -d)
 trap 'rm -rf "$TMP_WORK"' EXIT
-git clone --depth 1 \
-  "https://x-access-token:${GITHUB_TOKEN}@github.com/${CLIENT_REPO}.git" \
-  "$TMP_WORK/repo"
+gh repo clone "${CLIENT_REPO}" "$TMP_WORK/repo" -- --depth 1
 ```
+
+If `gh repo clone` fails (e.g., `gh` not installed), fall back to:
+
+```bash
+git clone --depth 1 "https://github.com/${CLIENT_REPO}.git" "$TMP_WORK/repo"
+```
+
+(The credential helper configured by bootstrap will handle auth. Do NOT construct a token-in-URL string or echo any token value.)
 
 ### Step 2: Load existing keys (if any)
 
