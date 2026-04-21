@@ -152,10 +152,10 @@ If no existing file: start with an empty credentials set silently.
 
 ### Step 3: Collect keys via terminal commands
 
-Ask the user which API keys they want to add or update. For each key they name, output a copy-paste terminal command in triple backticks using `read -rsp` so the value is entered securely (not visible, not in chat, not in shell history):
+Ask the user which API keys they want to add or update. For each key they name, output a copy-paste terminal command in triple backticks so the value is entered securely (not visible, not in chat, not in shell history). Use `printf` for the prompt and `read -rs` without `-p` — this works in both bash and zsh (`-p` in zsh means "read from coprocess", not "print prompt"):
 
 ```bash
-read -rsp "TAVILY_API_KEY: " v && echo && echo "TAVILY_API_KEY=$v" >> "$TMP_WORK/credentials.env"
+printf "TAVILY_API_KEY: " && read -rs v && echo && echo "TAVILY_API_KEY=$v" >> "$TMP_WORK/credentials.env"
 ```
 
 Replace `TAVILY_API_KEY` with the actual key name. Provide one command block per key. After the admin pastes and runs each command, ask "Any other keys? (say done when finished)".
