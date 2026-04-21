@@ -139,25 +139,29 @@ Credentials are the only secret this skill touches. Before emitting anything, co
 
 If they haven't run it, stop here and prompt them to do so before continuing.
 
-If they have, ask about passphrase mode. Two options, default to placeholder mode (per `palisades-labs-harness.md` § "Minimizing LLM exposure of client credentials"):
+If they have, ask how they plan to send the passphrase to employees. Default to the placeholder path:
 
-> How do you want to handle the passphrase in the output?
+> How will you send the passphrase to your team?
 >
-> **Placeholder mode (default, minimizes LLM exposure).** I emit the passphrase block with a literal `<PASSPHRASE>` marker. You substitute the real value in the outgoing message where you're about to send it (Slack DM, 1Password note, in-person). The passphrase never enters this chat. Recommended for real client distributions.
+> **1. 1Password, Bitwarden, or another secure channel (recommended)** — I'll leave `<PASSPHRASE>` in the output as a placeholder. Before you send the install message, swap in the real value. The passphrase never touches this chat.
 >
-> **Bake mode (convenience).** Paste the passphrase here and I bake it into the passphrase block, ready to forward. The passphrase appears in my context and the output, which may be retained by Anthropic's infrastructure (prompt cache, API logs). Acceptable when you own every involved principal (e.g., Aaron running a drill against his own test repo) or when the conversation is explicitly ephemeral.
+> **2. Slack direct message** — Same as above: I leave a placeholder, you fill it in before sending. Just be aware that Slack DMs are stored on Slack's servers, so use a private DM rather than a channel.
 >
-> Which mode? (default: placeholder)
+> **3. Email** — Same placeholder approach. Keep in mind that email is stored on mail servers in plaintext — use only as a last resort, and never CC anyone.
+>
+> **4. Paste it here (I'll include it in the output)** — Paste your passphrase and I'll build it into the message ready to forward. Note: the passphrase will appear in this conversation, which Anthropic may retain in infrastructure logs. Fine for internal drills; avoid for real client credentials.
 
-Wait for the user's choice. Hold the passphrase value (bake mode) or the `<PASSPHRASE>` marker (placeholder mode) for Step 3.
+<!-- Internal: options 1–3 = placeholder path; option 4 = bake path -->
+
+Wait for the user's choice. For options 1–3: use the `<PASSPHRASE>` marker in Step 3 and add an admin-facing reminder to substitute before sending. For option 4: ask for the passphrase value and substitute it in Step 3.
 
 ### Step 3: Emit the install message
 
-Substitute `<CLIENT_NAME>` and `<ORG>/<REPO>` always. For `<PASSPHRASE>`: substitute the literal value in **bake mode**; leave the literal `<PASSPHRASE>` marker in **placeholder mode**.
+Substitute `<CLIENT_NAME>` and `<ORG>/<REPO>` always. For `<PASSPHRASE>`: substitute the real value if the admin pasted it (option 4); otherwise leave the literal `<PASSPHRASE>` marker.
 
 **Frame the output for the admin first.** The admin needs to know the block below is what they forward to their team — NOT what they run themselves. Lead with one short framing sentence addressed to the admin, then output the forwardable block. Without the framing, admins read the recipient-facing "To install the <CLIENT_NAME>…" line and get confused about whose instructions they're looking at.
 
-**If placeholder mode was chosen**, add an extra admin-facing line above the passphrase block: *"Before sending, replace `<PASSPHRASE>` with the real value — substitute in the draft of your outgoing message, not back into this chat."*
+**If using the placeholder path (options 1–3)**, add an admin-facing line above the passphrase block: *"Before sending, replace `<PASSPHRASE>` with the real value — fill it in when you're drafting the outgoing message, not back into this chat."*
 
 Output format — admin framing first, then the forwardable install block, then the passphrase block:
 
