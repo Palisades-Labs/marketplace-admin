@@ -163,36 +163,60 @@ Substitute `<CLIENT_NAME>` and `<ORG>/<REPO>` always. For `<PASSPHRASE>`: substi
 
 **If using the placeholder path (options 1–3)**, add an admin-facing line above the passphrase block: *"Before sending, replace `<PASSPHRASE>` with the real value — fill it in when you're drafting the outgoing message, not back into this chat."*
 
-Output format — admin framing first, then the forwardable install block, then the passphrase block:
+Output format — emit in this exact structure. Each section is its own block so the admin can copy each part independently.
 
-> For your team to install the **<CLIENT_NAME>** Claude Code harness, send them the message below — it contains both Mac and Windows instructions, so each team member uses whichever matches their machine:
+---
+
+Admin framing (prose, not forwarded to employees):
+
+> Here's what to forward to your team. Copy each section in order — intro, then the command for their machine, then the after-install note. Send the passphrase separately via your chosen channel.
+
+---
+
+**Intro** — copy this first:
 
 ```
 To install the <CLIENT_NAME> Claude Code harness:
 
-**Before running this one-liner:** Add the `<ORG>/<REPO>` marketplace in Claude Desktop FIRST and wait for sync to complete. The encrypted credentials file is sourced from the marketplace sync directory — if the marketplace isn't synced yet, install will fail with a clear "marketplace not synced yet" error.
-
-• Mac / Linux — open Terminal, paste the line below, press Enter:
-
-    bash <(curl -fsSL https://raw.githubusercontent.com/Palisades-Labs/claude-harness-installer/main/bootstrap.sh) --decrypt <ORG>/<REPO>
-
-• Windows — open PowerShell. Copy ALL lines below, paste them together, press Enter:
-
-    $env:DECRYPT_MODE='1'
-    $env:CLIENT_REPO='<ORG>/<REPO>'
-    Set-ExecutionPolicy -Scope Process Bypass -Force
-    iwr -useb https://raw.githubusercontent.com/Palisades-Labs/claude-harness-installer/main/bootstrap.ps1 | iex
-
-After install, open a NEW terminal (or PowerShell) and run `claude`. Desktop auto-syncs future tool updates — no manual sync command needed.
+Before running the command: add the `<ORG>/<REPO>` marketplace in Claude Desktop first and wait for the sync to complete. If the sync hasn't finished, the install will fail with a clear error message.
 ```
 
-Then, immediately after the install block, add a **separate passphrase block** for the admin to send through a different channel:
+---
 
-> Bootstrap will prompt each employee for a setup passphrase during install. Send them the passphrase below **separately** — not in the same message as the install command (a Slack DM, in-person, or any private channel):
+**Mac / Linux** — open Terminal, paste this line, press Enter:
+
+```
+bash <(curl -fsSL https://raw.githubusercontent.com/Palisades-Labs/claude-harness-installer/main/bootstrap.sh) --decrypt <ORG>/<REPO>
+```
+
+---
+
+**Windows** — open PowerShell, paste all four lines below together, press Enter:
+
+```
+$env:DECRYPT_MODE='1'
+$env:CLIENT_REPO='<ORG>/<REPO>'
+Set-ExecutionPolicy -Scope Process Bypass -Force
+iwr -useb https://raw.githubusercontent.com/Palisades-Labs/claude-harness-installer/main/bootstrap.ps1 | iex
+```
+
+---
+
+**After install** — copy this last:
+
+```
+After the install completes, open a NEW terminal (or new PowerShell window) and run: claude
+```
+
+---
+
+Then add the passphrase block for the admin to send via their chosen channel (separate message):
+
+> Send the passphrase below through your chosen secure channel — separately from the install message above:
 >
 > `<PASSPHRASE>`
 >
-> They type or paste it when prompted. It is not echoed and does not appear in their shell history.
+> The employee types or pastes it when prompted. It is not echoed and does not appear in their shell history.
 
 **Paste-robustness rule (critical):** The Mac/Linux form is a single statement — `bash <(curl ...) --decrypt <org>/<repo>` has no inline env vars, so visual wrapping in Slack/email doesn't split interdependent lines. The Windows form still has three setup statements plus the `iwr|iex` call; keep each on its own line — do NOT collapse them into a single long line. Chat and email clients soft-wrap long commands and users' paste behavior often captures the visual wrap as real newlines, splitting the command into broken fragments. The multi-statement form is robust to wrap because each statement stands alone. **Do not shorten the PowerShell block to a one-liner under any circumstance.**
 
