@@ -79,7 +79,7 @@ Employee refusal text:
 
 **Context B — Client repo (admin):** `.claude-plugin/marketplace.json` exists in `$PWD`. Extract `<org>/<repo>` from the git remote URL.
 
-**Context C — Installed harness (admin's own machine):** Read `~/.claude/settings.json` → `extraKnownMarketplaces`. For each entry, check whether `~/.claude/plugins/marketplaces/<name>/credentials/` exists — only client harness repos have this directory; marketplace catalogs do not. Exclude any entry without it. Display qualifying entries by the `name` field from their `.claude-plugin/marketplace.json` titlecased, not the repo slug. Use the single qualifying entry automatically; ask if multiple.
+**Context C — Installed harness (admin's own machine):** Read `~/.claude/plugins/known_marketplaces.json` (the runtime registry — more reliable than `settings.json` which may be empty after a UI-based add). For each entry, check whether `~/.claude/plugins/marketplaces/<name>/credentials/` exists — only client harness repos have this directory; marketplace catalogs do not. Exclude any entry without it. Display qualifying entries by the `name` field from their `.claude-plugin/marketplace.json` titlecased, not the repo slug. Use the single qualifying entry automatically; ask if multiple.
 
 If none of A/B/C produces a repo, ask: "I couldn't detect a client repo. Are you running this from your master repo, from inside a client's harness repo, or on a machine with the harness installed?"
 

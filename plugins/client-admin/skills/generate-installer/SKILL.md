@@ -95,10 +95,10 @@ fi
 
 Extract `<org>/<repo>` from the remote URL (strip `https://github.com/` prefix and `.git` suffix).
 
-**Context C — Installed harness (admin's own machine):** `~/.claude/settings.json` has a non-empty `extraKnownMarketplaces`.
+**Context C — Installed harness (admin's own machine):** Read `~/.claude/plugins/known_marketplaces.json` (the runtime registry — more reliable than `settings.json` which may be empty after a UI-based add).
 
 ```bash
-jq -r '.extraKnownMarketplaces | to_entries[] | "\(.key)\t\(.value.source.repo)"' ~/.claude/settings.json
+jq -r 'to_entries[] | "\(.key)\t\(.value.source.url)"' ~/.claude/plugins/known_marketplaces.json
 ```
 
 For each entry, check whether `~/.claude/plugins/marketplaces/<name>/credentials/` exists — only client harness repos have this directory; marketplace catalogs do not. Exclude entries without it. Display qualifying entries by the `name` field from `.claude-plugin/marketplace.json` titlecased, not the repo slug. If exactly one qualifies, use it automatically. If multiple, ask the user which.
