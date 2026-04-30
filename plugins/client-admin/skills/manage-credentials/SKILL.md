@@ -190,14 +190,34 @@ git push
 
 Print this as the final output. **DO NOT print the passphrase** — admin already has it in their password manager.
 
+Substitute `<CLIENT_REPO>` with the value detected in the resolution step (e.g. `lou427/insidescale-claude-harness`).
+
 ```
 Credentials updated and pushed to <CLIENT_REPO>/credentials/credentials.env.age.
 
-Next step: run `/client-admin:generate-installer` to emit the decrypt-only one-liner. Distribute the one-liner + the passphrase (from your password manager) to employees via your chosen encrypted channel (1Password shared item, encrypted DM, etc.).
+────────────────────────────────────────────────────────────
+Next: wire the credentials into your own shell
+────────────────────────────────────────────────────────────
+
+What you just pushed is encrypted; your own machine's shell still doesn't have the API keys. The harness skills you ship to employees won't work for YOU until you also decrypt locally.
+
+Run this in a new terminal — it's the same install command your employees will run, but on your machine:
+
+    bash <(curl -fsSL https://raw.githubusercontent.com/Palisades-Labs/claude-harness-installer/main/bootstrap.sh) --decrypt <CLIENT_REPO>
+
+When prompted, paste the same passphrase you just used. The bootstrap decrypts to ~/.claude/credentials/credentials.env (the canonical path — the only location shells source from) and adds a source stanza to your shell rc so every future terminal loads the keys.
+
+Verify: open a new terminal, run `claude`, ask the harness to use a tool that needs an API key. It should work without errors.
+
+────────────────────────────────────────────────────────────
+Then: distribute to employees
+────────────────────────────────────────────────────────────
+
+Run `/client-admin:generate-installer` to emit the decrypt-only one-liner. Distribute the one-liner + the passphrase (from your password manager) to employees via your chosen encrypted channel (1Password shared item, encrypted DM, etc.).
 
 If rotating an existing key (same passphrase), employees pick up the new credentials.env.age at their next Claude Desktop marketplace sync — no new passphrase distribution needed.
 
-If rotating the passphrase itself, re-run `/client-admin:generate-installer` after this skill and redistribute both the one-liner and the new passphrase; employees re-run the one-liner to decrypt under the new passphrase.
+If rotating the passphrase itself, re-run `/client-admin:generate-installer` after this skill and redistribute both the one-liner and the new passphrase; employees re-run the one-liner to decrypt under the new passphrase. **You also re-run the bootstrap on your own machine** under the new passphrase before distributing — same command above.
 ```
 
 ---
