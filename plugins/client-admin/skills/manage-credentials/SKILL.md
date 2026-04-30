@@ -168,6 +168,40 @@ mkdir -p "$TMP_WORK/repo/credentials"
 age --encrypt --passphrase -o "$TMP_WORK/repo/credentials/credentials.env.age" "$TMP_WORK/credentials.env"
 ```
 
+### Step 4b: Drop plaintext at canonical path + wire admin's shell rc
+
+The admin already has the plaintext in `$TMP_WORK/credentials.env`. Copying it to `~/.claude/credentials/credentials.env` right now skips the bootstrap-decrypt round-trip the admin would otherwise need to run on themselves (encrypt-with-passphrase → push → wait for Desktop sync → re-enter same passphrase to decrypt back to the same plaintext). Bootstrap remains the canonical path for **employees** who never see the plaintext; this step is the admin shortcut.
+
+Run via Bash tool:
+
+```bash
+mkdir -p "$HOME/.claude/credentials"
+chmod 700 "$HOME/.claude/credentials"
+cp "$TMP_WORK/credentials.env" "$HOME/.claude/credentials/credentials.env"
+chmod 600 "$HOME/.claude/credentials/credentials.env"
+
+# Determine shell rc file (mirrors bootstrap.sh logic — same marker so the
+# stanza isn't duplicated if the admin also runs the bootstrap later).
+case "$(basename "${SHELL:-}")" in
+  zsh)  RC_FILE="$HOME/.zshrc" ;;
+  bash) RC_FILE="$HOME/.bashrc" ;;
+  *)    RC_FILE="$([[ "$(uname -s)" == "Darwin" ]] && echo "$HOME/.zshrc" || echo "$HOME/.bashrc")" ;;
+esac
+touch "$RC_FILE"
+
+CREDS_MARKER="# Palisades-Labs claude-harness-installer: credentials source"
+if ! grep -Fq "$CREDS_MARKER" "$RC_FILE"; then
+  {
+    printf '\n%s\n' "$CREDS_MARKER"
+    printf 'if [ -f "$HOME/.claude/credentials/credentials.env" ]; then\n'
+    printf '  set -a; source "$HOME/.claude/credentials/credentials.env"; set +a\n'
+    printf 'fi\n'
+  } >> "$RC_FILE"
+fi
+```
+
+The admin's plaintext credentials are now at `~/.claude/credentials/credentials.env` (chmod 600) and will load into every new shell via the rc stanza. **The plaintext value never enters Claude's context** — it's a `cp` of a temp file the skill already wrote, never echoed.
+
 ### Step 5: Ensure credentials.env is gitignored
 
 ```bash
@@ -195,29 +229,17 @@ Substitute `<CLIENT_REPO>` with the value detected in the resolution step (e.g. 
 ```
 Credentials updated and pushed to <CLIENT_REPO>/credentials/credentials.env.age.
 
-────────────────────────────────────────────────────────────
-Next: wire the credentials into your own shell
-────────────────────────────────────────────────────────────
-
-What you just pushed is encrypted; your own machine's shell still doesn't have the API keys. The harness skills you ship to employees won't work for YOU until you also decrypt locally.
-
-Run this in a new terminal — it's the same install command your employees will run, but on your machine:
-
-    bash <(curl -fsSL https://raw.githubusercontent.com/Palisades-Labs/claude-harness-installer/main/bootstrap.sh) --decrypt <CLIENT_REPO>
-
-When prompted, paste the same passphrase you just used. The bootstrap decrypts to ~/.claude/credentials/credentials.env (the canonical path — the only location shells source from) and adds a source stanza to your shell rc so every future terminal loads the keys.
-
-Verify: open a new terminal, run `claude`, ask the harness to use a tool that needs an API key. It should work without errors.
+Your own machine is already wired up — Step 4b dropped the plaintext at ~/.claude/credentials/credentials.env (chmod 600) and added the source stanza to your shell rc. Open a new terminal, run `claude`, and the API keys are available. No bootstrap needed for you.
 
 ────────────────────────────────────────────────────────────
-Then: distribute to employees
+Next: distribute to employees
 ────────────────────────────────────────────────────────────
 
-Run `/client-admin:generate-installer` to emit the decrypt-only one-liner. Distribute the one-liner + the passphrase (from your password manager) to employees via your chosen encrypted channel (1Password shared item, encrypted DM, etc.).
+Run `/client-admin:generate-installer` to emit the decrypt-only one-liner. Distribute the one-liner + the passphrase (from your password manager) to employees via your chosen encrypted channel (1Password shared item, encrypted DM, etc.). Employees run the bootstrap because they don't have plaintext access — you do, so you skipped that step.
 
 If rotating an existing key (same passphrase), employees pick up the new credentials.env.age at their next Claude Desktop marketplace sync — no new passphrase distribution needed.
 
-If rotating the passphrase itself, re-run `/client-admin:generate-installer` after this skill and redistribute both the one-liner and the new passphrase; employees re-run the one-liner to decrypt under the new passphrase. **You also re-run the bootstrap on your own machine** under the new passphrase before distributing — same command above.
+If rotating the passphrase itself, re-run `/client-admin:generate-installer` after this skill and redistribute both the one-liner and the new passphrase; employees re-run the one-liner to decrypt under the new passphrase. Your own ~/.claude/credentials/credentials.env was already updated by Step 4b above.
 ```
 
 ---
