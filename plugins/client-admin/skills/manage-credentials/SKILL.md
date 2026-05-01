@@ -168,40 +168,6 @@ mkdir -p "$TMP_WORK/repo/credentials"
 age --encrypt --passphrase -o "$TMP_WORK/repo/credentials/credentials.env.age" "$TMP_WORK/credentials.env"
 ```
 
-### Step 4b: Drop plaintext at canonical path + wire admin's shell rc
-
-The admin already has the plaintext in `$TMP_WORK/credentials.env`. Copying it to `~/.claude/credentials/credentials.env` right now skips the bootstrap-decrypt round-trip the admin would otherwise need to run on themselves (encrypt-with-passphrase → push → wait for Desktop sync → re-enter same passphrase to decrypt back to the same plaintext). Bootstrap remains the canonical path for **employees** who never see the plaintext; this step is the admin shortcut.
-
-Run via Bash tool:
-
-```bash
-mkdir -p "$HOME/.claude/credentials"
-chmod 700 "$HOME/.claude/credentials"
-cp "$TMP_WORK/credentials.env" "$HOME/.claude/credentials/credentials.env"
-chmod 600 "$HOME/.claude/credentials/credentials.env"
-
-# Determine shell rc file (mirrors bootstrap.sh logic — same marker so the
-# stanza isn't duplicated if the admin also runs the bootstrap later).
-case "$(basename "${SHELL:-}")" in
-  zsh)  RC_FILE="$HOME/.zshrc" ;;
-  bash) RC_FILE="$HOME/.bashrc" ;;
-  *)    RC_FILE="$([[ "$(uname -s)" == "Darwin" ]] && echo "$HOME/.zshrc" || echo "$HOME/.bashrc")" ;;
-esac
-touch "$RC_FILE"
-
-CREDS_MARKER="# Palisades-Labs claude-harness-installer: credentials source"
-if ! grep -Fq "$CREDS_MARKER" "$RC_FILE"; then
-  {
-    printf '\n%s\n' "$CREDS_MARKER"
-    printf 'if [ -f "$HOME/.claude/credentials/credentials.env" ]; then\n'
-    printf '  set -a; source "$HOME/.claude/credentials/credentials.env"; set +a\n'
-    printf 'fi\n'
-  } >> "$RC_FILE"
-fi
-```
-
-The admin's plaintext credentials are now at `~/.claude/credentials/credentials.env` (chmod 600) and will load into every new shell via the rc stanza. **The plaintext value never enters Claude's context** — it's a `cp` of a temp file the skill already wrote, never echoed.
-
 ### Step 5: Ensure credentials.env is gitignored
 
 ```bash
@@ -224,22 +190,14 @@ git push
 
 Print this as the final output. **DO NOT print the passphrase** — admin already has it in their password manager.
 
-Substitute `<CLIENT_REPO>` with the value detected in the resolution step (e.g. `lou427/insidescale-claude-harness`).
-
 ```
 Credentials updated and pushed to <CLIENT_REPO>/credentials/credentials.env.age.
 
-Your own machine is already wired up — Step 4b dropped the plaintext at ~/.claude/credentials/credentials.env (chmod 600) and added the source stanza to your shell rc. Open a new terminal, run `claude`, and the API keys are available. No bootstrap needed for you.
-
-────────────────────────────────────────────────────────────
-Next: distribute to employees
-────────────────────────────────────────────────────────────
-
-Run `/client-admin:generate-installer` to emit the decrypt-only one-liner. Distribute the one-liner + the passphrase (from your password manager) to employees via your chosen encrypted channel (1Password shared item, encrypted DM, etc.). Employees run the bootstrap because they don't have plaintext access — you do, so you skipped that step.
+Next step: run `/client-admin:generate-installer` to emit the decrypt-only one-liner. Distribute the one-liner + the passphrase (from your password manager) to employees via your chosen encrypted channel (1Password shared item, encrypted DM, etc.).
 
 If rotating an existing key (same passphrase), employees pick up the new credentials.env.age at their next Claude Desktop marketplace sync — no new passphrase distribution needed.
 
-If rotating the passphrase itself, re-run `/client-admin:generate-installer` after this skill and redistribute both the one-liner and the new passphrase; employees re-run the one-liner to decrypt under the new passphrase. Your own ~/.claude/credentials/credentials.env was already updated by Step 4b above.
+If rotating the passphrase itself, re-run `/client-admin:generate-installer` after this skill and redistribute both the one-liner and the new passphrase; employees re-run the one-liner to decrypt under the new passphrase.
 ```
 
 ---
