@@ -195,9 +195,47 @@ if ! grep -Fq "$CREDS_MARKER" "$RC_FILE"; then
     printf 'fi\n'
   } >> "$RC_FILE"
 fi
+
+# Splice the harness CLAUDE.md into ~/.claude/CLAUDE.md so every Claude Code
+# session sees the harness's orientation (3-layer architecture, directory
+# structure, credentials canonical path, skill authoring) — same content
+# bootstrap.sh splices for employees, done locally from the clone we already
+# have. Marker matches bootstrap.sh exactly so a subsequent bootstrap re-run
+# (or re-running this skill) replaces in-place rather than duplicating.
+HOME_CLAUDE_SRC="$TMP_WORK/repo/CLAUDE.md"
+HOME_CLAUDE_DST="$HOME/.claude/CLAUDE.md"
+M_NAME="${CLIENT_REPO##*/}"
+M_NAME="${M_NAME%-claude-harness}"
+M_NAME="${M_NAME%-harness}"
+BEGIN_MARKER="<!-- claude-harness orientation: $M_NAME (begin) -->"
+END_MARKER="<!-- claude-harness orientation: $M_NAME (end) -->"
+
+if [[ -f "$HOME_CLAUDE_SRC" ]]; then
+  mkdir -p "$(dirname "$HOME_CLAUDE_DST")"
+  touch "$HOME_CLAUDE_DST"
+  TMP_CLAUDE_MD="$(mktemp)"
+  if grep -Fq "$BEGIN_MARKER" "$HOME_CLAUDE_DST" 2>/dev/null; then
+    awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v src="$HOME_CLAUDE_SRC" '
+      $0 == begin { print; while ((getline line < src) > 0) print line; close(src); skip=1; next }
+      $0 == end   { print; skip=0; next }
+      !skip       { print }
+    ' "$HOME_CLAUDE_DST" > "$TMP_CLAUDE_MD"
+  else
+    cp "$HOME_CLAUDE_DST" "$TMP_CLAUDE_MD"
+    if [[ -s "$TMP_CLAUDE_MD" ]] && [[ "$(tail -c1 "$TMP_CLAUDE_MD" | wc -l)" -eq 0 ]]; then
+      printf '\n' >> "$TMP_CLAUDE_MD"
+    fi
+    {
+      printf '\n%s\n' "$BEGIN_MARKER"
+      cat "$HOME_CLAUDE_SRC"
+      printf '%s\n' "$END_MARKER"
+    } >> "$TMP_CLAUDE_MD"
+  fi
+  mv "$TMP_CLAUDE_MD" "$HOME_CLAUDE_DST"
+fi
 ```
 
-After this step, opening a new terminal loads the API keys automatically — no separate bootstrap step on yourself. The plaintext file lives at `chmod 600` in your `~/.claude/credentials/` only; it is never logged, printed, or pushed to GitHub.
+After this step, opening a new terminal loads the API keys automatically AND every Claude Code session sees the harness's orientation block in `~/.claude/CLAUDE.md` — no separate bootstrap step on yourself. The plaintext file lives at `chmod 600` in your `~/.claude/credentials/` only; it is never logged, printed, or pushed to GitHub.
 
 ### Step 6: Ensure credentials.env is gitignored
 
