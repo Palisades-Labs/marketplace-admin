@@ -168,7 +168,38 @@ mkdir -p "$TMP_WORK/repo/credentials"
 age --encrypt --passphrase -o "$TMP_WORK/repo/credentials/credentials.env.age" "$TMP_WORK/credentials.env"
 ```
 
-### Step 5: Ensure credentials.env is gitignored
+### Step 5: Wire your own shell
+
+The plaintext you collected in Step 3 is sitting at `$TMP_WORK/credentials.env`. Drop it at the canonical path so your own terminal sessions pick up the keys, and add the source stanza to your shell rc if it isn't already there.
+
+```bash
+ADMIN_CREDS_DIR="$HOME/.claude/credentials"
+mkdir -p "$ADMIN_CREDS_DIR" && chmod 700 "$ADMIN_CREDS_DIR"
+cp "$TMP_WORK/credentials.env" "$ADMIN_CREDS_DIR/credentials.env"
+chmod 600 "$ADMIN_CREDS_DIR/credentials.env"
+
+# Append source stanza idempotently. Marker matches bootstrap.sh exactly so a
+# subsequent bootstrap re-run won't duplicate the line.
+case "$(basename "${SHELL:-}")" in
+  zsh)  RC_FILE="$HOME/.zshrc" ;;
+  bash) RC_FILE="$HOME/.bashrc" ;;
+  *)    RC_FILE="$( [[ "$(uname -s)" == "Darwin" ]] && echo "$HOME/.zshrc" || echo "$HOME/.bashrc" )" ;;
+esac
+touch "$RC_FILE"
+CREDS_MARKER="# Palisades-Labs claude-harness-installer: credentials source"
+if ! grep -Fq "$CREDS_MARKER" "$RC_FILE"; then
+  {
+    printf '\n%s\n' "$CREDS_MARKER"
+    printf 'if [ -f "$HOME/.claude/credentials/credentials.env" ]; then\n'
+    printf '  set -a; source "$HOME/.claude/credentials/credentials.env"; set +a\n'
+    printf 'fi\n'
+  } >> "$RC_FILE"
+fi
+```
+
+After this step, opening a new terminal loads the API keys automatically — no separate bootstrap step on yourself. The plaintext file lives at `chmod 600` in your `~/.claude/credentials/` only; it is never logged, printed, or pushed to GitHub.
+
+### Step 6: Ensure credentials.env is gitignored
 
 ```bash
 GITIGNORE="$TMP_WORK/repo/.gitignore"
@@ -177,7 +208,7 @@ if ! grep -Fq "credentials.env" "$GITIGNORE" 2>/dev/null; then
 fi
 ```
 
-### Step 6: Commit and push
+### Step 7: Commit and push
 
 ```bash
 cd "$TMP_WORK/repo"
@@ -186,12 +217,14 @@ git commit -m "chore: update credentials"
 git push
 ```
 
-### Step 7: Confirm distribution
+### Step 8: Confirm distribution
 
 Print this as the final output. **DO NOT print the passphrase** — admin already has it in their password manager.
 
 ```
 Credentials updated and pushed to <CLIENT_REPO>/credentials/credentials.env.age.
+
+Your own shell is now wired up. Open a new terminal to verify (e.g. `echo $TAVILY_API_KEY`).
 
 Next step: run `/client-admin:generate-installer` to emit the decrypt-only one-liner. Distribute the one-liner + the passphrase (from your password manager) to employees via your chosen encrypted channel (1Password shared item, encrypted DM, etc.).
 
