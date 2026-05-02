@@ -203,4 +203,4 @@ If you want to rotate the passphrase itself (security event, employee left the c
 
 **You ran a command and got refused with "this is for admins"** — You're probably running it from a Claude Code session that doesn't have a `.claude-plugin/marketplace.json` in the working directory. Tell Claude "I'm the admin" when it asks.
 
-For deeper troubleshooting, see `~/.claude/directives/palisades-labs-harness-troubleshooting.md` (Aaron's reference; ask him if you need a specific section).
+For deeper troubleshooting beyond what's covered above, contact the harness maintainer at Palisades Labs.
