@@ -133,12 +133,16 @@ If **Yes**: execute via Bash tool — `age` will prompt for the passphrase at th
 age --decrypt -o "$TMP_WORK/credentials.env" "$TMP_WORK/repo/credentials/credentials.env.age"
 ```
 
-Display the current keys, **masking values**:
+Display the current keys, **masking values but showing each value's length** — a length that's exactly double what you'd expect is the tell-tale sign of a doubled paste (the 2026-06 `AVOMA_API_KEY` incident, where a 31-char key was stored as 62). Generate the list with this awk one-liner, which prints key names and lengths only, never values:
+
+```bash
+awk -F= '/^[A-Z_][A-Z0-9_]*=/{k=$1; v=$0; sub(/^[^=]*=/,"",v); print "  "k" = **** ("length(v)" chars)"}' "$TMP_WORK/credentials.env"
+```
 
 ```
 Current keys:
-  TAVILY_API_KEY = ****
-  AVOMA_API_KEY  = ****
+  TAVILY_API_KEY = **** (40 chars)
+  AVOMA_API_KEY  = **** (31 chars)
 ```
 
 If **No / Start fresh**: skip decryption, start with an empty credentials set. Tell the user: "Starting fresh — existing credentials will be replaced when you save."
@@ -147,15 +151,38 @@ If no existing file: start with an empty credentials set silently.
 
 ### Step 3: Collect keys via terminal commands
 
-Ask the user which API keys they want to add or update. For each key they name, output a copy-paste terminal command in triple backticks so the value is entered securely (not visible, not in chat, not in shell history). Use `printf` for the prompt and `read -rs` without `-p` — this works in both bash and zsh (`-p` in zsh means "read from coprocess", not "print prompt"):
+Ask the user which API keys they want to add or update. Have the admin paste this **`setkey` helper once** at the top of the same terminal session. It reads each value securely (no echo, not in chat, not in shell history), **rejects an accidentally-doubled paste**, and **replaces** any existing line for that key instead of appending a duplicate. It uses `read -rs` without `-p` — this works in both bash and zsh (`-p` in zsh means "read from coprocess", not "print prompt"):
 
 ```bash
-printf "TAVILY_API_KEY: " && read -rs v && echo && echo "TAVILY_API_KEY=$v" >> "$TMP_WORK/credentials.env"
+setkey() {
+  local k="$1" v f="$TMP_WORK/credentials.env" L
+  printf "%s: " "$k" && read -rs v && echo
+  L=${#v}
+  if [ "$L" -eq 0 ]; then echo "✗ $k: empty, not saved"; return 1; fi
+  if [ $((L % 2)) -eq 0 ] && [ "${v:0:$((L/2))}" = "${v:$((L/2))}" ]; then
+    echo "⚠️  $k looks doubled ($L chars, first half == second half) — pasted twice? Not saved. Re-run and paste once."
+    return 1
+  fi
+  { grep -v "^${k}=" "$f" 2>/dev/null; printf '%s=%s\n' "$k" "$v"; } > "$f.tmp" && mv "$f.tmp" "$f"
+  echo "✓ $k saved ($L chars)"
+}
 ```
 
-Replace `TAVILY_API_KEY` with the actual key name. Provide one command block per key. After the admin pastes and runs each command, ask "Any other keys? (say done when finished)".
+Then, for each key the admin names, give them a one-line block (one key at a time):
 
-To remove a key (start-fresh path or explicit removal), omit it — don't append it to credentials.env.
+```bash
+setkey TAVILY_API_KEY
+```
+
+Replace `TAVILY_API_KEY` with the actual key name. After each, ask "Any other keys? (say done when finished)".
+
+**Why `setkey` and not `echo "KEY=$v" >> file`:** a bare append leaves TWO lines when you rotate a key that Step 2 already loaded (the old value plus the new one), which silently drifts the file; and a doubled paste (`KEYKEY` on one line) sails straight through. `setkey` strips any prior line for the key and refuses a value whose two halves are identical.
+
+To remove a key that Step 2 loaded, drop it explicitly (omitting it is not enough once it's in the file):
+
+```bash
+grep -v '^KEYNAME=' "$TMP_WORK/credentials.env" > "$TMP_WORK/credentials.env.tmp" && mv "$TMP_WORK/credentials.env.tmp" "$TMP_WORK/credentials.env"
+```
 
 The final `$TMP_WORK/credentials.env` must never be printed or logged.
 
@@ -264,9 +291,9 @@ Credentials updated and pushed to <CLIENT_REPO>/credentials/credentials.env.age.
 
 Your own shell is now wired up. Open a new terminal to verify (e.g. `echo $TAVILY_API_KEY`).
 
-Next step: run `/client-admin:generate-installer` to emit the decrypt-only one-liner. Distribute the one-liner + the passphrase (from your password manager) to employees via your chosen encrypted channel (1Password shared item, encrypted DM, etc.).
+For first-time setup, run `/client-admin:generate-installer` to emit the decrypt-only one-liner. Send the one-liner to employees, and share the passphrase separately through the team password manager.
 
-If rotating an existing key (same passphrase), employees pick up the new credentials.env.age at their next Claude Desktop marketplace sync — no new passphrase distribution needed.
+If adding or rotating a key with the same passphrase, employees do not need a new passphrase. They do need to wait for Claude Desktop marketplace sync, re-run the same decrypt one-liner, enter the same passphrase, and open a new terminal. Marketplace sync fetches the updated encrypted `credentials.env.age`; the one-liner refreshes their local usable `~/.claude/credentials/credentials.env`.
 
 If rotating the passphrase itself, re-run `/client-admin:generate-installer` after this skill and redistribute both the one-liner and the new passphrase; employees re-run the one-liner to decrypt under the new passphrase.
 ```

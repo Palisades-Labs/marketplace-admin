@@ -3,7 +3,7 @@ name: generate-installer
 description: Produce a pre-composed install command (Mac bash + Windows PowerShell one-liners) for a client admin to distribute to their team. The one-liner decrypts the shared credentials from the Claude Desktop marketplace sync. Use when the admin is ready to onboard employees. Never run this as an employee — the admin will send you a command.
 ---
 
-*Last Edited: 2026-04-20*
+*Last Edited: 2026-05-07*
 
 # generate-installer
 
@@ -132,37 +132,36 @@ After running the detection logic above, tell the user what you found:
 
 If detection failed or found multiple clients, ask the user to clarify. Keep it to one question.
 
-### Step 2: Confirm credentials + passphrase mode
+### Step 2: Confirm credentials + password-manager sharing
 
-Credentials are the only secret this skill touches. Before emitting anything, confirm the admin has actually encrypted + pushed them:
+This skill emits one install message but the team needs **two secrets** alongside it, both shared through the team's password manager:
+
+1. **Passphrase** — decrypts the `credentials.env.age` file on each employee machine.
+2. **Read-only GitHub PAT** — required by Claude Desktop to add the private harness marketplace. Generated once by the admin (Phase 1, Step 3b in ADMIN.md), shared via the password manager as `<client>-harness-pat`.
+
+Client harness repos are private by default, including InsideScale's harness. Treat the PAT as required.
+
+Before emitting anything, confirm the admin has actually encrypted + pushed credentials:
 
 > Have you run `/client-admin:manage-credentials` yet? It encrypts `credentials.env.age`, pushes it to the harness repo (so Claude Desktop can sync it to employee machines), and gives you the passphrase to send employees separately.
-
-If they haven't run it, stop here and prompt them to do so before continuing.
-
-If they have, ask how they plan to send the passphrase to employees. Default to the placeholder path:
-
-> How will you send the passphrase to your team?
 >
-> **1. 1Password, Bitwarden, or another secure channel (recommended)** — I'll leave `<PASSPHRASE>` in the output as a placeholder. Before you send the install message, swap in the real value. The passphrase never touches this chat.
->
-> **2. Slack direct message** — Same as above: I leave a placeholder, you fill it in before sending. Just be aware that Slack DMs are stored on Slack's servers, so use a private DM rather than a channel.
->
-> **3. Email** — Same placeholder approach. Keep in mind that email is stored on mail servers in plaintext — use only as a last resort, and never CC anyone.
->
-> **4. Paste it here (I'll include it in the output)** — Paste your passphrase and I'll build it into the message ready to forward. Note: the passphrase will appear in this conversation, which Anthropic may retain in infrastructure logs. Fine for internal drills; avoid for real client credentials.
+> Also confirm: have you generated the read-only GitHub PAT and shared it with the team via your password manager (per ADMIN.md Phase 1, Step 3b)? Employees need it to add the private marketplace in Claude Desktop.
 
-<!-- Internal: options 1–3 = placeholder path; option 4 = bake path -->
+If they haven't done either, stop here and prompt them to finish before continuing.
 
-Wait for the user's choice. For options 1–3: use the `<PASSPHRASE>` marker in Step 3 and add an admin-facing reminder to substitute before sending. For option 4: ask for the passphrase value and substitute it in Step 3.
+If they have, do not ask for a secret channel and do not ask them to paste the passphrase into chat. Use the placeholder path:
+
+> Great. I'll leave `<PASSPHRASE>` in the output as a placeholder. Before you send the passphrase message, replace it with the real value from your password manager. The passphrase should not touch this chat.
+
+Always use the `<PASSPHRASE>` marker in Step 3 and add an admin-facing reminder to substitute before sending.
 
 ### Step 3: Emit the install message
 
-Substitute `<CLIENT_NAME>` and `<ORG>/<REPO>` always. For `<PASSPHRASE>`: substitute the real value if the admin pasted it (option 4); otherwise leave the literal `<PASSPHRASE>` marker.
+Substitute `<CLIENT_NAME>`, `<ORG>/<REPO>`, and `<MARKETPLACE_NAME>` always. Leave the literal `<PASSPHRASE>` marker in the passphrase block; the admin fills it in from the password manager before sharing.
 
 **Frame the output for the admin first.** The admin needs to know the block below is what they forward to their team — NOT what they run themselves. Lead with one short framing sentence addressed to the admin, then output the forwardable block. Without the framing, admins read the recipient-facing "To install the <CLIENT_NAME>…" line and get confused about whose instructions they're looking at.
 
-**If using the placeholder path (options 1–3)**, add an admin-facing line above the passphrase block: *"Before sending, replace `<PASSPHRASE>` with the real value — fill it in when you're drafting the outgoing message, not back into this chat."*
+Add an admin-facing line above the passphrase block: *"Before sending, replace `<PASSPHRASE>` with the real value from your password manager — fill it in when you're drafting the outgoing password-manager item, not back into this chat."*
 
 Output format — emit in this exact structure. Each section is its own block so the admin can copy each part independently.
 
@@ -170,7 +169,7 @@ Output format — emit in this exact structure. Each section is its own block so
 
 Admin framing (prose, not forwarded to employees):
 
-> Here's what to forward to your team. Copy each section in order — intro, then the command for their machine, then the after-install note. Send the passphrase separately via your chosen channel.
+> Here's what to forward to your team. Copy each section in order — intro, then the command for their machine, then the after-install note. Send the passphrase separately through your password manager, and make sure the read-only GitHub PAT is shared there too.
 
 ---
 
@@ -179,7 +178,13 @@ Admin framing (prose, not forwarded to employees):
 ```
 To install the <CLIENT_NAME> Claude Code harness:
 
-Before running the command: add the `<ORG>/<REPO>` marketplace in Claude Desktop first and wait for the sync to complete. If the sync hasn't finished, the install will fail with a clear error message.
+Before running the command below: add the `<ORG>/<REPO>` marketplace in Claude Desktop (Customize → Personal plugins → + → Create plugin → Add marketplace).
+
+Two things to know about the marketplace add:
+1. The first add will FAIL — the repo is private. Claude Desktop will then prompt you for a GitHub PAT. Paste the read-only PAT your admin shared in your password manager (separately from the passphrase). Desktop retries with the token and succeeds.
+2. Once synced, the plugin Directory opens. Click the "+" next to BOTH plugins (<MARKETPLACE_NAME> and tools) to install them.
+
+Wait for sync to complete (green checkmark) before running the command below. Otherwise the install errors with "marketplace not synced yet".
 ```
 
 ---
@@ -211,9 +216,9 @@ After the install completes, open a NEW terminal (or new PowerShell window) and 
 
 ---
 
-Then add the passphrase block for the admin to send via their chosen channel (separate message):
+Then add the passphrase block for the admin to send through the password manager (separate message):
 
-> Send the passphrase below through your chosen secure channel — separately from the install message above:
+> Send the passphrase below through your password manager — separately from the install message above:
 >
 > `<PASSPHRASE>`
 >
@@ -228,13 +233,14 @@ After the install block, print:
 ```
 API key rotation
 ----------------
-To add a new API key or rotate an existing one (Tavily, Avoma, or any other), run `/client-admin:manage-credentials`, update the key, and push. Employees pick up the new key on their next Claude Desktop marketplace sync — no new install command or passphrase distribution needed (as long as you keep the same passphrase).
+To add a new API key or rotate an existing one (Tavily, Avoma, or any other), run `/client-admin:manage-credentials`, update the key, and push. Employees do not need a new passphrase if you keep the same one, but they do need to wait for Claude Desktop marketplace sync, re-run the same install command, enter the same passphrase, and open a new terminal. Sync fetches the updated encrypted file; the install command refreshes their local usable credentials.
 
 If you rotate the passphrase itself, re-run `/client-admin:generate-installer` and redistribute both the install command and the new passphrase; employees re-run the one-liner to decrypt under the new passphrase.
 ```
 
 ## Cross-layer notes
 
+- **Private harness repo**: client harness repos are private by default, including InsideScale's harness. Employees need a read-only fine-grained PAT to add the marketplace in Claude Desktop. The admin generates it per ADMIN.md Phase 1 Step 3b and shares it through the team password manager. The intro text emitted in Step 3 calls this out explicitly.
 - The emitted one-liners must stay in sync with `bootstrap.sh` and `bootstrap.ps1` arg parsing in the `claude-harness-installer` repo. The current contract:
   - `bootstrap.sh --decrypt <org>/<repo>`
   - `bootstrap.ps1 -Decrypt -Repo <org>/<repo>` (locally) OR `$env:DECRYPT_MODE='1'; $env:CLIENT_REPO='<org>/<repo>'; iwr|iex` (one-liner form; param() binding is skipped under iex so the script reads `$env:DECRYPT_MODE` and `$env:CLIENT_REPO` as fallbacks).
